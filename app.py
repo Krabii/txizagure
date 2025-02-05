@@ -3,7 +3,7 @@ import os
 import pygame
 from collections import namedtuple
 from math import isclose
-from random import randint, choice
+from random import randint, choices
 from pygame.locals import *
 
 
@@ -31,7 +31,9 @@ janariak = {
     'marrubia': food('marrubi', '1F353', 1, 1, 0),
     'melokotoi': food('melokotoi', '1F351', 1, 1, 0),
     'taco': food('taco','1F32F', 1, 0, 3),
-    'ramen': food('ramen', '1F35C', 1, 1, 0)
+    'ramen': food('ramen', '1F35C', 1, 1, 0),
+    'perretxiko': food('perretxiko', '1F344', 0, 0, 0),
+    'skull': food('skull', '1F480', 0, 0, 0)
 }
 names = list(janariak.keys())
 
@@ -58,7 +60,7 @@ class AttackObject(pygame.sprite.Sprite):
         screen = pygame.display.get_surface()
         self.area = screen.get_rect()
         self.type = type
-        self.speed = 1
+        self.speed = 30
         self.moving = False
         self.direction = 'right'
         if self.type == "kakagure":
@@ -84,11 +86,11 @@ class AttackObject(pygame.sprite.Sprite):
         else:
             self.direction = 'left'
     
-    def move(self):
+    def move(self, dt):
         if self.direction == 'right':
-            self.rect.x += self.speed
+            self.rect.x += self.speed * dt
         else:
-            self.rect.x -= self.speed
+            self.rect.x -= self.speed * dt
         if self.rect.x > SCREEN_DIMENSIONS[0] or self.rect.x < -30:
             self.reinit()
 
@@ -103,7 +105,8 @@ class FallingObject(pygame.sprite.Sprite):
         self.reinit()
 
     def reinit(self):
-        self.name = choice(names)
+        weights = [0.1 if name in ["perretxiko", "skull"] else 0.9 for name in names]
+        self.name = choices(names, weights=weights)[0]
         self.food = janariak[self.name]
         self.unicode = janariak[self.name].unicode
         self.image, self.rect = load_png(f"openmoji-72x72-color/{self.unicode}.png")
@@ -151,6 +154,11 @@ class Player(pygame.sprite.Sprite):
         self.rect.x += step
 
     def eat(self, obj: FallingObject, other_player):
+        if obj.food.name == 'skull':
+            self.life -= 5
+        if obj.food.name == "perretxiko":
+            # self.image = "openmoji-72x72-color/1F635-200D-1F4AB.png")
+            pass
         self.kakagure += obj.food.kakagure
         self.txizagure += obj.food.txizagure
         self.gasak += obj.food.gasak
@@ -199,7 +207,7 @@ def main():
         # limits FPS to 60
         # dt is delta time in seconds since last frame, used for framerate-
         # independent physics.
-        dt = clock.tick(60) / 1000
+        dt = clock.tick(60) / 1000.0
 
         # Did the user click the window close button?
         for event in pygame.event.get():
@@ -235,12 +243,12 @@ def main():
         # Keep Falling
         for obj in objs:
             obj.fall()
-            player1.kaka.move()
-            player1.txiz.move()
-            player1.gas.move()
-            player2.kaka.move()
-            player2.txiz.move()
-            player2.gas.move()
+            player1.kaka.move(dt)
+            player1.txiz.move(dt)
+            player1.gas.move(dt)
+            player2.kaka.move(dt)
+            player2.txiz.move(dt)
+            player2.gas.move(dt)
             # Player eats falling object
             if isclose(player1.rect.x, obj.rect.x, abs_tol=ABS_TOL) \
                     and isclose(player1.rect.y, obj.rect.y, abs_tol=ABS_TOL):
